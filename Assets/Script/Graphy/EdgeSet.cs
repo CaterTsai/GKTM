@@ -53,7 +53,7 @@ public class EdgeSet : MonoBehaviour {
             EdgeScript_.v1 = from;
             EdgeScript_.v2 = to;
 
-            //newEdge_.name = "Edge_" + idFrom_ + "_" + idTo_;
+            newEdge_.name = "Edge_" + idFrom_ + "_" + idTo_;
             if (!_EdgeMap.ContainsKey(idFrom_))
             {
                 _EdgeMap.Add(idFrom_, new List<GameObject>());
@@ -150,6 +150,18 @@ public class EdgeSet : MonoBehaviour {
         _iEdgePoolSize = _EdgePool.Count;
 
         _EdgeMap.Clear();
+    }
+
+    //---------------------------------------------------
+    public List<GameObject> getEdges(int id)
+    {
+        List<GameObject> edgeList_ = new List<GameObject>();
+        if (!_EdgeMap.TryGetValue(id, out edgeList_))
+        {
+            Debug.LogError("[EdgeSet]getEdges failed id :" + id);
+        }
+
+        return edgeList_;
     }
     #endregion
 }

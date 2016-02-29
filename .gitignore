@@ -70,3 +70,20 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+*.dll
+*.asset
+*.meta
+*.prefab
+*.mat
+*.jpg
+*.unity
+ProjectSettings/
+Assets/Demigiant/
+Assets/HighlightingSystemDemo/
+Assets/Plugins/
+Assets/UnityVS/
+Assets/Resources/
+Assets/_MK/
+Assets/mmmm/
+

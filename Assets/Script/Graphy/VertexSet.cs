@@ -3,8 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class VertexSet : MonoBehaviour
-{    
+{
+    public delegate void onVertexClear();
+
     #region Element
+    public onVertexClear callback;
+    private bool _checkClear = false;
+
     public GameObject _IBaseP = null;
     public GameObject _IGateP = null;
     public GameObject _IKeyP = null;
@@ -29,7 +34,7 @@ public class VertexSet : MonoBehaviour
     #endregion
 
     #region Basic Method
-    void Start()
+    void Awake()
     {
         //Initial
         _VertexGate = Instantiate(_IGateP);
@@ -54,12 +59,39 @@ public class VertexSet : MonoBehaviour
         }
 
         _iVertexPoolSize = _VertexPool.Count;
+
+        //resetVertex();
+    }
+
+    void Update()
+    {
+        if (_checkClear)
+        {
+            if (checkVertexClear())
+            {
+                callback();
+                _checkClear = false;
+            }
+        }
     }
     #endregion
 
     #region Method
     //---------------------------------------------------
-    public bool setVertex(GraphyData.eVertexType eType, int id)
+    public void resetVertex()
+    {
+        _VertexGate.SetActive(true);
+        _VertexGate.GetComponent<IslandMove>().Enter(
+            () =>
+            {
+                _VertexGate.transform.localRotation = new Quaternion();
+            }
+        );
+        _VertexGate.transform.position = default(Vector3);
+    }
+    
+    //---------------------------------------------------
+    public bool setVertex(GraphyData.eVertexType eType, int id, Vector3 pos = default(Vector3))
     {
         GameObject vertex_ = null;
         switch (eType)
@@ -110,7 +142,20 @@ public class VertexSet : MonoBehaviour
         {
             vertex_.SetActive(true);
             vertex_.GetComponent<Island>().iID = id;
-            //vertex_.name = "Vertex_" + id;
+            vertex_.GetComponent<Island>().eType = eType;
+
+            if (pos != default(Vector3) && eType != GraphyData.eVertexType.eVertex_Order1)
+            {
+                vertex_.GetComponent<IslandMove>().Enter(
+                    () =>
+                    {
+                        vertex_.transform.localRotation = new Quaternion();
+                    }
+                );
+                vertex_.transform.position = pos;
+            }
+
+            vertex_.name = "Vertex_" + id;
 
             if (_VertexMap.ContainsKey(id))
             {
@@ -129,20 +174,17 @@ public class VertexSet : MonoBehaviour
             return false;
         }        
     }
-    
+     
+
     //---------------------------------------------------
     public void removeVertex(int id)
     {
         GameObject vertex_ = null;
         if (_VertexMap.TryGetValue(id, out vertex_))
-        {  
-            vertex_.SetActive(false);
-            vertex_.GetComponent<Island>().iID = -1;
-            if (vertex_.GetComponent<Island>().eType == GraphyData.eVertexType.eVertex_Normal)
-            {
-                _iVertexPoolSize++;
-            }
-            //_VertexMap.Remove(id);
+        {
+            vertex_.GetComponent<IslandMove>().Exit(
+                () => {onVertexExit(vertex_);}
+            );
         }
     }
 
@@ -184,32 +226,75 @@ public class VertexSet : MonoBehaviour
     }
 
     //---------------------------------------------------
-    public void resetVertex()
+    public void clearVertex(bool includeGate = false)
     {
         foreach (var vertex_ in _VertexPool)
         {
             if (vertex_.activeInHierarchy)
             {
-                vertex_.SetActive(false);
+                removeVertex(vertex_.GetComponent<Island>().iID);
             }
         }
-        _iVertexPoolSize = _VertexPool.Count;
 
         if (_VertexKey.activeInHierarchy)
         {
-            _VertexKey.SetActive(false);
+            _VertexKey.GetComponent<IslandMove>().Exit(
+                () =>{onVertexExit(_VertexKey);}
+            );
         }
         if (_VertexTreasure.activeInHierarchy)
         {
-            _VertexTreasure.SetActive(false);
+            _VertexTreasure.GetComponent<IslandMove>().Exit(
+                () => { onVertexExit(_VertexTreasure); }
+            );
         }
         if (_VertexMonster.activeInHierarchy)
         {
-            _VertexMonster.SetActive(false);
+            _VertexMonster.GetComponent<IslandMove>().Exit(
+                () => { onVertexExit(_VertexMonster); }
+            );
+        }
+
+        if (includeGate)
+        {
+            _VertexGate.GetComponent<IslandMove>().Exit(
+                () => { onVertexExit(_VertexGate); }
+            );
         }
 
         _VertexMap.Clear();
+        _checkClear = true;
     }
+    
+    //---------------------------------------------------
+    private bool checkVertexClear()
+    {
+        bool result_ = true;
+        //Check map
+        result_ &= (_VertexMap.Count == 0);
+
+        //Check key, treasure, and monster
+        result_ &= (!_VertexKey.activeInHierarchy);
+        result_ &= (!_VertexTreasure.activeInHierarchy);
+        result_ &= (!_VertexMonster.activeInHierarchy);
+
+        if (!result_)
+        {
+            return result_;
+        }
+
+        //Check Vertex Pool
+        foreach (var vertex_ in _VertexPool)
+        {
+            if (vertex_.activeInHierarchy)
+            {
+                result_ = false;
+                break;
+            }
+        }
+        return result_;
+    }
+
     //---------------------------------------------------
     public GameObject getVertexByID(int id)
     {
@@ -222,7 +307,16 @@ public class VertexSet : MonoBehaviour
         return vertex_;
     }
 
-
+    //---------------------------------------------------
+    private void onVertexExit(GameObject vertex)
+    {
+        vertex.SetActive(false);
+        
+        if (vertex.GetComponent<Island>().eType == GraphyData.eVertexType.eVertex_Normal)
+        {
+            _iVertexPoolSize++;
+        }
+    }
     #endregion
 
 }
